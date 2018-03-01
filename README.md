@@ -1,0 +1,2 @@
+# Zynq_qemu_standalone
+这次是zynq裸机实现以太网与PC端linux通信
