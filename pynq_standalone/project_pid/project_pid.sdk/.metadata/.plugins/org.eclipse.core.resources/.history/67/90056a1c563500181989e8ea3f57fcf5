@@ -1,0 +1,14 @@
+
+
+XPid_regulator Hls_pid;
+int ResultAvailHls_PID;
+
+void hls_pid_return_isr(void *InstancePtr)
+{
+		XPid_regulator *pAccelerator = (XPid_regulator *)InstancePtr;
+
+	   // clear the local interrupt
+		XPid_regulator_InterruptClear(pAccelerator,1);
+		print("ResultAvailHls_PID = 1\n\r");
+		ResultAvailHls_PID = 1;
+}

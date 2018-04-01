@@ -1,0 +1,125 @@
+
+#include <stdio.h>
+#include "platform.h"
+#include "xil_printf.h"
+#include "xparameters.h"
+
+#include "xscugic.h"
+#include "my_mac_driver.h"
+
+
+
+int Prepare_send_packet(float Return_real)
+{
+	int datalen=0;
+	DATA_SEND *data_send;        //Payload of Ethernet
+	strcpy(data_send->data_1,"I am zynq");
+	strcpy(data_send->data_2,"Who are you?");
+	strcpy(data_send->data_3,"How are you?");
+	data_send->data_4 = 666;
+	data_send->data_5 = Return_real;
+    datalen = sizeof(DATA_SEND)/sizeof(unsigned char);
+    printf("datalen = %d\n",datalen);
+
+	memcpy (MySendbuf, dst_mac, 6);
+	memcpy (MySendbuf + 6, src_mac, 6);
+
+	MySendbuf[12] = ETH_P_DEAN / 256;
+	MySendbuf[13] = ETH_P_DEAN % 256;
+
+	// data
+	memcpy (MySendbuf + 14 , data_send, datalen);
+	return datalen;
+}
+
+int main()
+{
+    init_platform();
+    int Status = XST_SUCCESS;
+    int status;
+	u32 Return_temp;
+	float Return_real;
+	int datalen=0;
+    XEmacPs *EmacPsInstancePtr = &Mac;
+    print("Hello World\n\r");
+
+    // Setup the PID instances
+    status=hls_PID_init(&Hls_pid);
+    if(status != XST_SUCCESS){
+    	print("HLS peripheral setup failed\n\r");
+    	return(-1);
+    }
+
+    //Setup the interrupt
+ /*   status = setup_interrupt();
+    if(status != XST_SUCCESS){
+        print("Interrupt setup failed\n\r");
+        return(-1);
+    }
+*/
+    ResultAvailHls_PID = 0;
+
+    Status = mymacinit(src_mac,EmacPsInstancePtr);
+	if (Status != XST_SUCCESS) {
+		return XST_FAILURE;
+	}
+
+    // Enable Global and instance interrupts
+    XPid_regulator_InterruptEnable(&Hls_pid,1);
+    XPid_regulator_InterruptGlobalEnable(&Hls_pid);
+
+	while(1)
+	{
+
+		if( ResultAvailHls_PID == 1 )
+		{
+			ResultAvailHls_PID = 0;
+			Return_temp = XPid_regulator_Get_return(&Hls_pid);
+			Return_real = *((float*)&Return_temp);
+			DATA_SEND *data_send;        //Payload of Ethernet
+			strcpy(data_send->data_1,"I am zynq");
+			strcpy(data_send->data_2,"Who are you?");
+			strcpy(data_send->data_3,"How are you?");
+			data_send->data_4 = 666;
+			data_send->data_5 = Return_real;
+		    datalen = sizeof(DATA_SEND)/sizeof(unsigned char);
+		    printf("datalen = %d\n",datalen);
+
+			memcpy (MySendbuf, dst_mac, 6);
+			memcpy (MySendbuf + 6, src_mac, 6);
+
+			MySendbuf[12] = ETH_P_DEAN / 256;
+			MySendbuf[13] = ETH_P_DEAN % 256;
+
+			// data
+			memcpy (MySendbuf + 14 , data_send, datalen);
+			//datalen = Prepare_send_packet(Return_real);
+			Mac_driver_PacketSend(14+datalen, MySendbuf,EmacPsInstancePtr);		   //调用网卡发送函数
+			printf("Return_real = %f\n\r",Return_real);  //如果采集到的数是0，说明有问题
+		}
+		else{;}
+		if(PtpNewPktRecd == TRUE)
+		{
+			PtpNewPktRecd = 0;
+			char unsigned *buf;
+			ETH_HEADER *eth;
+			DATA_HEADER *data;
+		   //接收数据不包括数据链路帧头
+			buf = MyRecvbuf;
+			eth = ( ETH_HEADER *)(buf);
+			analyseETH(eth);
+			size_t ethlen =  14;
+			if(my_protocol_flag == 1)
+			{
+				pid_input();
+				data = (DATA_HEADER *)(buf + ethlen);
+				analyseDATA(data);
+			}
+		}
+		else{;}
+	}
+
+    cleanup_platform();
+    return 0;
+}
+

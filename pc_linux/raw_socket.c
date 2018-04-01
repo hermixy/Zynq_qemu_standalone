@@ -38,6 +38,7 @@ typedef struct _data_recv //定义data_recv
     char data_2[16];
     char data_3[32];
     int  data_4;
+	float data_5;
 }DATA_RECV;
 
 
@@ -90,65 +91,58 @@ int main(void)
 	device_send.sll_addr[4]   = 0x05;
 	device_send.sll_addr[5]   = 0x06;
 
-	/**************************recv device init***************************/
-
-    while (1)
-    {
-		/******************************reveive*************************/
-        //n = recv(sockfd, rec_buf, sizeof(rec_buf), NULL);
-		n = recvfrom(sockfd, rec_buf, sizeof(rec_buf), 0,NULL, NULL);
-        if (n == -1)
-        {
-            perror("recv error!\n");
-            break;
-        }
-        else if (n==0)
-            continue;
-        //接收数据包括数据链路帧头
-		eth = ( ETH_HEADER *)(rec_buf);
-		analyseETH(eth);
-		size_t ethlen =  14;
-		if(my_protocol_flag == 1)
-		{
-			data = (DATA_RECV *)(rec_buf + ethlen);
-			analyseDATA(data);
-		}
-		printf ("recv_n = %d ,Now begin to send\n",n);
-		/******************************send*************************/
+	/******************************send*************************/
 //		printf ("Index for interface %s is %i\n", interface, device.sll_ifindex);
 
-		datalen = 12;
-		send_data[0] = 'I';
-		send_data[1] = 'a';
-		send_data[2] = 'm';
-		send_data[3] = 'V';
-		send_data[4] = 'M';
-		send_data[5] = 'w';
-		send_data[6] = 'a';
-		send_data[7] = 'r';
-		send_data[8] = 'e';
-		send_data[9] = '!';
-		send_data[10] = '!';
-		send_data[11] = '!';
-		//MAC
-		memcpy (send_buf, dst_mac, 6);
-		memcpy (send_buf + 6, src_mac, 6);
-		//Type
-		send_buf[12] = ETH_P_QEMU / 256;
-		send_buf[13] = ETH_P_QEMU % 256;
-		//Data
-		memcpy (send_buf + 14 , send_data, datalen);
-		n = sendto(sockfd, send_buf, ethlen+datalen, 0,(struct sockaddr *) &device_send, sizeof (device_send));
-		//n = send(sockfd, send_buf, sizeof(send_buf), 0);
-		printf ("\n",n);
-        if (n == -1)
-        {
-            perror("send error!\n");
-            break;
-        }
-        else if (n==0)
-            continue;
+	datalen = 12;
+	send_data[0] = 'I';
+	send_data[1] = 'a';
+	send_data[2] = 'm';
+	send_data[3] = 'V';
+	send_data[4] = 'M';
+	send_data[5] = 'w';
+	send_data[6] = 'a';
+	send_data[7] = 'r';
+	send_data[8] = 'e';
+	send_data[9] = '!';
+	send_data[10] = '!';
+	send_data[11] = '!';
+	//MAC
+	memcpy (send_buf, dst_mac, 6);
+	memcpy (send_buf + 6, src_mac, 6);
+	//Type
+	send_buf[12] = ETH_P_QEMU / 256;
+	send_buf[13] = ETH_P_QEMU % 256;
+	//Data
+	memcpy (send_buf + 14 , send_data, datalen);
+	n = sendto(sockfd, send_buf, 14+datalen, 0,(struct sockaddr *) &device_send, sizeof (device_send));
+	//n = send(sockfd, send_buf, sizeof(send_buf), 0);
+	printf ("\n",n);
+    if (n == -1)
+    {
+        perror("send error!\n");
+        return 1;
     }
+
+	/******************************reveive*************************/
+    //n = recv(sockfd, rec_buf, sizeof(rec_buf), NULL);
+	n = recvfrom(sockfd, rec_buf, sizeof(rec_buf), 0,NULL, NULL);
+    if (n == -1)
+    {
+        perror("recv error!\n");
+        return 1;
+    }
+    //接收数据包括数据链路帧头
+	eth = ( ETH_HEADER *)(rec_buf);
+	analyseETH(eth);
+	size_t ethlen =  14;
+	if(my_protocol_flag == 1)
+	{
+		data = (DATA_RECV *)(rec_buf + ethlen);
+		analyseDATA(data);
+	}
+	printf ("recv_n = %d ,receive successfully\n",n);
+
     close(sockfd);
     return 0;
 }
@@ -176,5 +170,6 @@ void analyseDATA(DATA_RECV *data)
 	printf("data_2 is: %s\n", data->data_2);
 	printf("data_3 is: %s\n", data->data_3);
 	printf("data_4 is: %d\n", data->data_4);
+	printf("data_5 is: %f\n", data->data_5);
 }
 
